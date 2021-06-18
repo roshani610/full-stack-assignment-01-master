@@ -1,0 +1,116 @@
+#!/usr/bin/env node
+require('dotenv').config();
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('demo:server');
+var http = require('http');
+var { connectAppAPIMongoDB } = require('../db/mongoose.connection');
+var { connectToMySQL } = require('../db/mySQL.connection');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Connecting to Database
+ */
+if (process.env.DATABASE === 'mongoDB') {
+  connectAppAPIMongoDB(process.env.MONGODB_URI)
+}
+if (process.env.DATABASE === 'mySQL') {
+  connectToMySQL({
+    host: process.env.MYSQL_HOST || 'localhost',
+    user: process.env.MYSQL_USER || 'root',
+    database: process.env.MYSQL_DATABASE,
+    password: process.env.MYSQL_PASSWORD || 'root'
+  }).then(connection => {
+    var sql = `CREATE TABLE IF NOT EXISTS employee (fistName VARCHAR(35), lastname VARCHAR(35), email VARCHAR(100), type VARCHAR(10), dob VARCHAR(10), hobies VARCHAR(255), picture VARCHAR(255))`;
+    connection.query(sql, function (err, result) {
+      if (err) throw err;
+      console.log("Employee schema created");
+    });
+  }).catch(err => {
+    throw err
+  })
+}
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
